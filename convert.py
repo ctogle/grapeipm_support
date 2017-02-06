@@ -24,6 +24,9 @@ def translate(args):
 
 		# extract the identify of the station from the first of the header lines
 		station = formatting[1]
+		if not station in cfg:
+			print('station \'%s\' not found in configuration file \'%s\'' % (station,args.configfile))
+			raise KeyError
 		# extract the timestamp format associated with ifile from the config file
 		timestamp_format = cfg[station][0]
 		# extract the opening timestamp for the window of relevance
@@ -73,7 +76,6 @@ def translate(args):
 					for x in tkey:
 						if x < 0:orow.append('NULL')
 						else:orow.append(irow[x])
-					orow.insert(2,'0')
 					orow.append(hydrocode)
 					writer.writerow(orow)
 
@@ -94,7 +96,8 @@ def parse_config(config):
 		configheaders = next(reader)
 		specs['OUTPUTINFO'] = (outputheaders,configheaders)
 		for irow in reader:
-			specs[irow[0]] = irow[1:] 
+			if irow[0].startswith('#'):continue
+			specs[irow[0].strip()] = irow[1:] 
 	return specs
 
 # update the config file based on what data was processed 
