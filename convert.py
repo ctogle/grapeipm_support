@@ -1,6 +1,18 @@
 #!/usr/bin/python2.7
 import pdb,os,csv,argparse,datetime,collections
 
+# make a lambda function corresponding to handling of a data column
+def make_translatevalue(j):
+	if '>' in j:
+		i,g = j.split('>')
+		i,e = int(i),lambda x : eval(g)
+		f = lambda ir : str(e(float(ir[i])))
+	else:
+		i = int(j)
+		if i < 0:f = lambda ir : 'NULL'	
+		else:f = lambda ir : ir[i]
+	return f
+
 # perform merging on a single loggernet file
 def translate(args):
 	# ifile should be a loggernet file, corresponding to one station and some number of sensors
@@ -28,17 +40,17 @@ def translate(args):
 			print('station \'%s\' not found in configuration file \'%s\'' % (station,args.configfile))
 			raise KeyError
 		# extract the timestamp format associated with ifile from the config file
-		timestamp_format = cfg[station][0]
+		timestamp_format = cfg[station][1]
 		# extract the opening timestamp for the window of relevance
 		if args.startdate:opentimestamp = args.startdate
-		else:opentimestamp = cfg[station][1]
+		else:opentimestamp = cfg[station][2]
 		opentime = datetime.datetime.strptime(opentimestamp,timestamp_format)
 		# extract the closing timestamp for the window of relevance
 		if args.startdate:closetimestamp = args.enddate
-		else:closetimestamp = cfg[station][2]
+		else:closetimestamp = cfg[station][3]
 		closetime = datetime.datetime.strptime(closetimestamp,timestamp_format)
 		# extract mapping necessary for sensor specific handling of ifile
-		translatekeys = cfg[station][3].split('|')
+		translatekeys = cfg[station][4].split('|')
 
 		# if a hydrocode prefix was not given as an argument, use the name of the station
 		if args.hydrocode:hydrocodeprefix = args.hydrocode 
@@ -59,8 +71,10 @@ def translate(args):
 				# construct the station and sensor unique hydrcode
 				tkey = tkeys.split(':')
 				hydrocodesuffix = tkey.pop(0)
-				tkey = [int(j) for j in tkey] 
 				hydrocode = hydrocodeprefix+hydrocodesuffix
+				tfkey = [make_translatevalue(j) for j in tkey]
+				# identify the time interval associated with the data source
+				time_interval = cfg[station][0]
 
 				# return to the 5th line of the input file (after headers)
 				ifh.seek(0)
@@ -72,15 +86,13 @@ def translate(args):
 					itime = datetime.datetime.strptime(irow[0],timestamp_format)
 					if itime <= opentime or itime >= closetime:continue
 					# construct and record the output data point 'orow' based on the relevant sensor
-					orow = []
-					for x in tkey:
-						if x < 0:orow.append('NULL')
-						else:orow.append(irow[x])
+					orow = [tf(irow) for tf in tfkey]
+					orow.append(time_interval)
 					orow.append(hydrocode)
 					writer.writerow(orow)
 
 			# update the config file to reflect to newest processed data point
-			cfg[station][1] = itime.strftime(cfg[station][0])
+			cfg[station][2] = itime.strftime(cfg[station][1])
 
 	# note the successful processing of ifile to ofile on stdout
 	print('translated file \'%s\' to \'%s\'' % (ifile,ofile))
