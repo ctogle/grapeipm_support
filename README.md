@@ -43,8 +43,11 @@ For a given row of data found in an input data file, the resulting output data r
 two columns containing the sampling rate of the input data as well as the unique hydrocode associated with the sensor responsible for the input data row.
 
 There are thus three valid specifications for mapping an input column data entry to an output column data entry:
+
 1) The entry "-1" means the column entry of the output will be filled with "NULL". 
+
 2) The entry "j" where j is an integer between 0 and M-1 will be filled with the jth column data value of the input row. 
+
 3) The entry "j>5.0*(x-32.0)/9.0" will operate on the jth column data value of the input row, 
 subtracting 32, and multiplaying 5.0/9.0 (converting temperature from degrees fahrenheit to celsius as an example).
 
