@@ -1,0 +1,14 @@
+
+This is a description of what "./test.py" checks when run, which should validate the generic handling of every sensor of every station with respect to the given configuration file.
+Each available input file is run over some specified range of dates. The following is verified of the output:
+
+1) There are the anticipated number of data points present
+2) Each row of output has the appropriate number of entries
+3) The hydrocode of every entry is among the anticipated hydrocodes
+4) The interval value for each entry is as specified in the configuration file
+5) Every anticipated record number is found in the output data
+6) NULL is found at every anticipated entry of every output data point
+7) For at least one given record number found in the test interval of dates, every anticipated output data point is found exactly as specified in the configuration file
+
+
+
