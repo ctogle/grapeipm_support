@@ -4,7 +4,7 @@ import unittest,os,csv,pdb
 
 class test_idata(unittest.TestCase):
 
-	cfg = os.path.join(os.getcwd(),'grapeipm2.cfg')    
+	cfg = os.path.join(os.getcwd(),'grapeipm.cfg')    
 	inp = os.path.join(os.getcwd(),'idata')
 	oup = os.path.join(os.getcwd(),'odata','out.dat')
 
