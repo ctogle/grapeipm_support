@@ -27,59 +27,54 @@ def translate(args):
 	# open ifile for parsing - multiple passes required for multiple sensors
 	with open(ifile,'r') as ifh:
 		reader = csv.reader(ifh)
-
 		# extract some header information from ifile and discard the rest
 		# it is assumed that each loggernet file has exactly 4 header lines
 		formatting = next(reader)
 		next(reader),next(reader),next(reader)
 		ifh.seek(0)
-
 		# extract the identify of the station from the first of the header lines
 		station = formatting[1]
-		if not station in cfg:
+		# extract the configuration info for parsing all target sensors
+		if station in cfg:
+			sensors = cfg[station]
+			if args.hydrocode in sensors:
+				sensors = ((args.hydrocode,sensors[args.hydrocode]),)
+			elif args.hydrocode is None:
+				sensors = tuple((s,sensors[s]) for s in sensors.keys())
+			else:
+				print('sensor \'%s\' not found in configuration file \'%s\'' % (args.hydrocode,args.configfile))
+				raise KeyError
+		else:
 			print('station \'%s\' not found in configuration file \'%s\'' % (station,args.configfile))
 			raise KeyError
-		# extract the timestamp format associated with ifile from the config file
-		timestamp_format = cfg[station][1]
-		# extract the opening timestamp for the window of relevance
-		if args.startdate:opentimestamp = args.startdate
-		else:opentimestamp = cfg[station][2]
-		opentime = datetime.datetime.strptime(opentimestamp,timestamp_format)
-		# extract the closing timestamp for the window of relevance
-		if args.startdate:closetimestamp = args.enddate
-		else:closetimestamp = cfg[station][3]
-		closetime = datetime.datetime.strptime(closetimestamp,timestamp_format)
-		# extract mapping necessary for sensor specific handling of ifile
-		translatekeys = cfg[station][4].split('|')
-
-		# if a hydrocode prefix was not given as an argument, use the name of the station
-		if args.hydrocode:hydrocodeprefix = args.hydrocode 
-		else:hydrocodeprefix = station 
 
 		# open the output file
 		with open(ofile,'w' if args.overwrite else 'a') as ofh:
 			writer = csv.writer(ofh,delimiter = args.delimiter)
-
 			# write the header line if the file is new, or not being overwritten
 			if outheader:writer.writerow(cfg['OUTPUTINFO'][0])
 
 			# iterate over sensor key mappings, outputting data to ofile for each sensor
 			# the sensor mappings are specified by the config file
-			for tkeys in translatekeys:
-				# extract the index mapping from ifile to ofile data points
-				# assume the first entry is always the hydrocode suffix
-				# construct the station and sensor unique hydrcode
-				tkey = tkeys.split(':')
-				hydrocodesuffix = tkey.pop(0)
-				hydrocode = hydrocodeprefix+hydrocodesuffix
-				tfkey = [make_translatevalue(j) for j in tkey]
+			for hydrocode,sensorcfg in sensors:
 				# identify the time interval associated with the data source
-				time_interval = cfg[station][0]
-
+				time_interval = sensorcfg[0]
+				# extract the timestamp format associated with ifile from the config file
+				timestamp_format = sensorcfg[1]
+				# extract the opening timestamp for the window of relevance
+				if args.startdate:opentimestamp = args.startdate
+				else:opentimestamp = sensorcfg[2]
+				opentime = datetime.datetime.strptime(opentimestamp,timestamp_format)
+				# extract the closing timestamp for the window of relevance
+				if args.startdate:closetimestamp = args.enddate
+				else:closetimestamp = sensorcfg[3]
+				closetime = datetime.datetime.strptime(closetimestamp,timestamp_format)
+				# extract the index mapping from ifile to ofile data points
+				tkey = sensorcfg[4].split(':')
+				tfkey = [make_translatevalue(j) for j in tkey]
 				# return to the 5th line of the input file (after headers)
 				ifh.seek(0)
 				next(reader),next(reader),next(reader),next(reader)
-
 				# iterate over the input data points using the given sensor index mapping
 				for irow in reader: 
 					# skip this data point if the timestamp is insufficently recent
@@ -92,7 +87,7 @@ def translate(args):
 					writer.writerow(orow)
 
 			# update the config file to reflect to newest processed data point
-			cfg[station][2] = itime.strftime(cfg[station][1])
+			cfg[station][hydrocode][2] = itime.strftime(cfg[station][hydrocode][1])
 
 	# note the successful processing of ifile to ofile on stdout
 	print('translated file \'%s\' to \'%s\'' % (ifile,ofile))
@@ -109,7 +104,11 @@ def parse_config(config):
 		specs['OUTPUTINFO'] = (outputheaders,configheaders)
 		for irow in reader:
 			if irow[0].startswith('#'):continue
-			specs[irow[0].strip()] = irow[1:] 
+			configid = irow[0].strip()
+			sensorid = irow[1].strip()
+			if not configid in specs:
+				specs[configid] = collections.OrderedDict()
+			specs[configid][sensorid] = irow[2:] 
 	return specs
 
 # update the config file based on what data was processed 
@@ -122,8 +121,9 @@ def save_config(config,specs):
 				writer.writerow(specs[speckey][0])
 				writer.writerow(specs[speckey][1])
 			else:
-				stationcfg = [speckey]+specs[speckey]
-				writer.writerow(stationcfg)
+				for sensorkey in specs[speckey]:
+					hydrocfg = [speckey,sensorkey]+specs[speckey][sensorkey]
+					writer.writerow(hydrocfg)
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(formatter_class = argparse.RawTextHelpFormatter)
@@ -139,7 +139,7 @@ if __name__ == '__main__':
 	parser.add_argument('-d','--delimiter',default = ',',
 		help = 'specify a delimiter for all new data points being processed\nNote: use $\'\\t\' for tab character')
 	parser.add_argument('-i','--hydrocode',
-		help = 'specify a hydrocode prefix for all new data points being processed')
+		help = 'specify a hydrocode for all new data points being processed')
 	parser.add_argument('-u','--updateconfig',action = 'store_true',
 		help = 'update the config file after parsing new data')
 	args = parser.parse_args()

@@ -33,14 +33,18 @@ the format of the timestamps, a beginning and ending timestamp indicating a wind
 and a string encoding the mapping of input loggernet data points associated with a sensor to the correct output data point.
 
 The mappings of each the sensors of a given remote weather station are seperated by pipe characters in this long encoding string.
-Each mapping corresponding to exactly one sensor of one station is a colon seperated list of entries.
-The first entry of such a mapping is an identifier to associate with the relevant sensor (becomes a suffix on the hydrocode in the output data).
-The remaining entries must be or begin with integers, corresponding one to one with the output headers; these specify the columns of the input to map to the columns of the output.
-These integers can fall within the range of 0 to M-1 where there are M headers used in the output, with the exception that -1 is mapped to a "NULL" value placeholder.
-One additional possibility is supported for arbitrarily processing each value of a given column, 
-where the entry consists of an integer between 0 and M-1 followed by a ">" character, followed by a string specifying an operation on "x", where "x" refers to an entry of that column.
-For a given row of data found in an input data file, the resulting output data row will represent this mapping followed by 
-two columns containing the sampling rate of the input data as well as the unique hydrocode associated with the sensor responsible for the input data row.
+* Each mapping corresponding to exactly one sensor of one station is a colon seperated list of entries.
+* The first entry of such a mapping is an identifier to associate with the relevant sensor (becomes a suffix on the hydrocode in the output data).
+* The remaining entries must be or begin with integers, corresponding one to one with the output headers; these specify the columns of the input 
+  to map to the columns of the output.
+* These integers can fall within the range of 0 to M-1 where there are M headers used in the output, with the exception that -1 is mapped to a 
+  "NULL" value placeholder.
+* One additional possibility is supported for arbitrarily processing each value of a given column, 
+  where the entry consists of an integer between 0 and M-1 followed by a ">" character, followed by a string specifying an operation on "x", 
+  where "x" refers to an entry of that column.
+* For a given row of data found in an input data file, the resulting output data row will represent this mapping followed by 
+  two columns containing the sampling rate of the input data as well as the unique hydrocode associated with the sensor responsible for the 
+  input data row.
 
 There are thus three valid specifications for mapping an input column data entry to an output column data entry:
 
