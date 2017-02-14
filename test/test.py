@@ -8,7 +8,7 @@ class test_idata(unittest.TestCase):
 	inp = os.path.join(os.getcwd(),'idata')
 	oup = os.path.join(os.getcwd(),'odata','out.dat')
 
-	cmd = '../convert.py '+inp+os.path.sep+'%s '+oup+' '+cfg+' -o -s \'%s\' -e \'%s\''
+	cmd = '../convert.py '+cfg+' -i'+inp+os.path.sep+'%s -o'+oup+' -w -s \'%s\' -e \'%s\''
 
 	# check the following given a run case
 	#	there are the correct number of output data points

@@ -14,10 +14,10 @@ inputfiles=("$input_data_directory"/*.dat)
 first=true
 for filename in "${inputfiles[@]}"; do
     if [ "$first" = true ] ; then
-    	time "$script" "$filename" "$output_data_file" "$configuration_file" -o "$@"
+    	time "$script" "$configuration_file" -i "$filename" -o "$output_data_file" -w "$@"
         first=false
     else
-        time "$script" "$filename" "$output_data_file" "$configuration_file" "$@"
+    	time "$script" "$configuration_file" -i "$filename" -o "$output_data_file" "$@"
     fi
 done
 

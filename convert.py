@@ -14,16 +14,9 @@ def make_translatevalue(j):
 	return f
 
 # perform merging on a single loggernet file
-def translate(args):
-	# ifile should be a loggernet file, corresponding to one station and some number of sensors
-	# ofile is the destination file for parsed data (sometimes overwritten, sometimes appended to)
-	ifile,ofile = args.inputfile,args.outputfile
-	# cfg is a dictionary of information used in parsing, 
-	#	carrying station/sensor specific information about how to handle all known loggernet formats
-	cfg = parse_config(args.configfile)
+def translate(ifile,ofile,cfg,args):
 	# outheader decides if outputting outputs in ofile is necessary
-	outheader = not os.path.exists(args.outputfile) or args.overwrite
-
+	outheader = not os.path.exists(ofile) or args.overwrite
 	# open ifile for parsing - multiple passes required for multiple sensors
 	with open(ifile,'r') as ifh:
 		reader = csv.reader(ifh)
@@ -100,8 +93,15 @@ def parse_config(config):
 	with open(config,'r') as cfh:
 		reader = csv.reader(cfh)
 		outputheaders = next(reader)
+		defaultinputfiles = next(reader)
+		defaultoutputfile = next(reader)
 		configheaders = next(reader)
-		specs['OUTPUTINFO'] = (outputheaders,configheaders)
+		specs['OUTPUTINFO'] = (
+			outputheaders,
+			defaultinputfiles,
+			defaultoutputfile,
+			configheaders,
+				)
 		for irow in reader:
 			if irow[0].startswith('#'):continue
 			configid = irow[0].strip()
@@ -120,6 +120,8 @@ def save_config(config,specs):
 			if speckey == 'OUTPUTINFO':
 				writer.writerow(specs[speckey][0])
 				writer.writerow(specs[speckey][1])
+				writer.writerow(specs[speckey][2])
+				writer.writerow(specs[speckey][3])
 			else:
 				for sensorkey in specs[speckey]:
 					hydrocfg = [speckey,sensorkey]+specs[speckey][sensorkey]
@@ -127,21 +129,31 @@ def save_config(config,specs):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(formatter_class = argparse.RawTextHelpFormatter)
-	parser.add_argument('inputfile',help = 'specify an input data file')
-	parser.add_argument('outputfile',help = 'specify an output data file')
 	parser.add_argument('configfile',help = 'specify a parsing configuration file')
+	parser.add_argument('-i','--inputfile',help = 'optionally specify an input data file')
+	parser.add_argument('-o','--outputfile',help = 'optionally specify an output data file')
 	parser.add_argument('-s','--startdate',
 		help = 'specify a starting time stamp for relevant new data points')
 	parser.add_argument('-e','--enddate',
 		help = 'specify an ending time stamp for relevant new data points')
-	parser.add_argument('-o','--overwrite',action = 'store_true',
-		help = 'discard existing data if output file already exists')
 	parser.add_argument('-d','--delimiter',default = ',',
 		help = 'specify a delimiter for all new data points being processed\nNote: use $\'\\t\' for tab character')
-	parser.add_argument('-i','--hydrocode',
+	parser.add_argument('-c','--hydrocode',
 		help = 'specify a hydrocode for all new data points being processed')
+	parser.add_argument('-w','--overwrite',action = 'store_true',
+		help = 'discard existing data if output file already exists')
 	parser.add_argument('-u','--updateconfig',action = 'store_true',
 		help = 'update the config file after parsing new data')
 	args = parser.parse_args()
-	translate(args)
+
+	# cfg is a dictionary of information used in parsing, 
+	#	carrying station/sensor specific information about how to handle all known loggernet formats
+	cfg = parse_config(args.configfile)
+	ifile,ofile = args.inputfile,args.outputfile
+	if ofile is None:ofile = cfg['OUTPUTINFO'][2][0]
+	if ifile is None:
+		for ifile in cfg['OUTPUTINFO'][1]:
+			translate(ifile,ofile,cfg,args)
+			if args.overwrite:args.overwrite = False
+	else:translate(ifile,ofile,cfg,args)
 
