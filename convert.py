@@ -35,11 +35,11 @@ def translate(ifile,ofile,cfg,args):
 			elif args.hydrocode is None:
 				sensors = tuple((s,sensors[s]) for s in sensors.keys())
 			else:
-				print('sensor \'%s\' not found in configuration file \'%s\'' % (args.hydrocode,args.configfile))
-				raise KeyError
+				print('sensor \'%s\' not found for station \'%s\' in configuration file \'%s\'' % (args.hydrocode,station,args.configfile))
+				return False
 		else:
-			print('station \'%s\' not found in configuration file \'%s\'' % (station,args.configfile))
-			raise KeyError
+			print('station \'%s\' of input file \'%s\'  not found in configuration file \'%s\'' % (station,ifile,args.configfile))
+			return False	
 
 		# open the output file
 		with open(ofile,'w' if args.overwrite else 'a') as ofh:
@@ -72,7 +72,7 @@ def translate(ifile,ofile,cfg,args):
 				for irow in reader: 
 					# skip this data point if the timestamp is insufficently recent
 					itime = datetime.datetime.strptime(irow[0],timestamp_format)
-					if itime <= opentime or itime >= closetime:continue
+					if itime < opentime or itime >= closetime:continue
 					# construct and record the output data point 'orow' based on the relevant sensor
 					orow = [tf(irow) for tf in tfkey]
 					orow.append(time_interval)
@@ -80,12 +80,15 @@ def translate(ifile,ofile,cfg,args):
 					writer.writerow(orow)
 
 			# update the config file to reflect to newest processed data point
-			cfg[station][hydrocode][2] = itime.strftime(cfg[station][hydrocode][1])
+			if itime < closetime:
+				cfg[station][hydrocode][2] = itime.strftime(cfg[station][hydrocode][1])
+			else:cfg[station][hydrocode][2] = closetime.strftime(cfg[station][hydrocode][1])
 
 	# note the successful processing of ifile to ofile on stdout
 	print('translated file \'%s\' to \'%s\'' % (ifile,ofile))
 	# update the config file with any changes to cfg dictionary that occurred 
 	if args.updateconfig:save_config(args.configfile,cfg)
+	return True
 
 # given the path to a configuration file, return a dict of specified options to use
 def parse_config(config):
@@ -127,6 +130,12 @@ def save_config(config,specs):
 					hydrocfg = [speckey,sensorkey]+specs[speckey][sensorkey]
 					writer.writerow(hydrocfg)
 
+def convert_file(ifile,ofile,cfg,args):
+	if os.path.exists(ifile):
+		didconvert = translate(ifile,ofile,cfg,args)
+		if didconvert and args.overwrite:args.overwrite = False
+	else:print('input file \'%s\' is missing! - skipping request...' % ifile)
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(formatter_class = argparse.RawTextHelpFormatter)
 	parser.add_argument('configfile',help = 'specify a parsing configuration file')
@@ -142,6 +151,8 @@ if __name__ == '__main__':
 		help = 'specify a hydrocode for all new data points being processed')
 	parser.add_argument('-w','--overwrite',action = 'store_true',
 		help = 'discard existing data if output file already exists')
+	parser.add_argument('-z','--definputs',action = 'store_true',
+		help = 'optionally iterate over input files listed on line 2 of config file')
 	parser.add_argument('-u','--updateconfig',action = 'store_true',
 		help = 'update the config file after parsing new data')
 	args = parser.parse_args()
@@ -150,10 +161,29 @@ if __name__ == '__main__':
 	#	carrying station/sensor specific information about how to handle all known loggernet formats
 	cfg = parse_config(args.configfile)
 	ifile,ofile = args.inputfile,args.outputfile
+
+	# if no output file was specified, use the default output path from the config file
 	if ofile is None:ofile = cfg['OUTPUTINFO'][2][0]
-	if ifile is None:
+
+	# the -z option leads to iterating over second line of config file for input files
+	if args.definputs:
 		for ifile in cfg['OUTPUTINFO'][1]:
-			translate(ifile,ofile,cfg,args)
-			if args.overwrite:args.overwrite = False
-	else:translate(ifile,ofile,cfg,args)
+			convert_file(ifile,ofile,cfg,args)
+	# the -i option was used; ifile is comma seperated list of paths
+	elif ifile:
+		for ifi in ifile.split(','):	
+			convert_file(ifi,ofile,cfg,args)
+	# if not using the -z or -i options, iterate over all config entries using their default files
+	else:
+		# iterate over config entries for default files
+		for stationkey in cfg.keys():
+			if stationkey == 'OUTPUTINFO':continue
+			for sensorkey in cfg[stationkey]:
+				defifiles = cfg[stationkey][sensorkey][5:]
+				for defifile in defifiles:
+					convert_file(defifile,ofile,cfg,args)
+
+	
+
+
 
