@@ -175,12 +175,16 @@ if __name__ == '__main__':
 			convert_file(ifi,ofile,cfg,args)
 	# if not using the -z or -i options, iterate over all config entries using their default files
 	else:
+		autofixhydrocode = not args.hydrocode
 		# iterate over config entries for default files
 		for stationkey in cfg.keys():
 			if stationkey == 'OUTPUTINFO':continue
 			for sensorkey in cfg[stationkey]:
+				if not autofixhydrocode and not sensorkey == args.hydrocode:
+					continue
 				defifiles = cfg[stationkey][sensorkey][5:]
 				for defifile in defifiles:
+					if autofixhydrocode:args.hydrocode = sensorkey
 					convert_file(defifile,ofile,cfg,args)
 
 	
