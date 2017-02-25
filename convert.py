@@ -112,7 +112,12 @@ def parse_config(config):
 			if not configid in specs:
 				specs[configid] = collections.OrderedDict()
 			specs[configid][sensorid] = irow[2:] 
-	return specs
+	hcfg = collections.OrderedDict()
+	for station in specs:
+		if station == 'OUTPUTINFO':continue
+		for sensor in specs[station]:
+			hcfg[sensor] = specs[station][sensor]
+	return specs,hcfg
 
 # update the config file based on what data was processed 
 # changes should be represented by changes in specs (no changes to specs -> identical cfg file) 
@@ -159,7 +164,7 @@ if __name__ == '__main__':
 
 	# cfg is a dictionary of information used in parsing, 
 	#	carrying station/sensor specific information about how to handle all known loggernet formats
-	cfg = parse_config(args.configfile)
+	cfg,hcfg = parse_config(args.configfile)
 	ifile,ofile = args.inputfile,args.outputfile
 
 	# if no output file was specified, use the default output path from the config file
