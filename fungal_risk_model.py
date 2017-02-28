@@ -91,7 +91,7 @@ def save_data(ofile,models,risks,hcfg,args):
 						orow.append(drs[dj])
 					else:
 						orow.append('NULL')
-						orow.append('NULL')
+						orow.append('No-Read')
 				orow.append(hydrocode)
 				writer.writerow(orow)
 				dptime += datetime.timedelta(minutes = interval)
@@ -123,7 +123,7 @@ if __name__ == '__main__':
 	elif not args.outputfile:print('no output file provided!');quit()
 	cfg,hcfg = convert.parse_config(args.configfile)
 
-	datapoints = {}
+	datapoints = collections.OrderedDict()
 	ifiles = args.inputfiles.split(',')
 	for ifile in ifiles:load_data(ifile,datapoints,hcfg,args)
 

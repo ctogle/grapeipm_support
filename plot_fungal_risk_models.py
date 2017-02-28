@@ -9,20 +9,16 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 
-#def plot_axes_xy(x = 5,o = (0,0),f = None,aspect = None):
-def plot_axes_xy(x = (-5,5),y = (-5,5),f = None,aspect = None):
-	if f is None:ax = plt.figure().add_subplot(111)
-	else:ax = f.add_subplot(111)
+def plot_axes_xy(x = (-5,5),y = (-5,5),f = None,loc = '111',aspect = 'auto'):
+	if f is None:ax = plt.figure().add_subplot(loc)
+	else:ax = f.add_subplot(loc)
 	ax.set_xlim(*x)
 	ax.set_ylim(*y)
 	if aspect == 'equal':ax.set_aspect('equal')
 	return ax
 
 
-def plot_sensor(path,sensor,data,x_l = 'X',y_l = 'Y',f = None):
-	if f is None:f = plt.figure()
-	# data is a list of risk datapoints
-	# ts,r1i,r1c,...,hc
+def plot_sensor(path,sensor,data,x_l = 'Time (Days)',y_l = 'Y',f = None):
 	timestamp_format = fungal_risk_model.timestamp_format
 	epoch = datetime.datetime.utcfromtimestamp(0)
 	begintime = data[0]['begintime'].strftime(timestamp_format)
@@ -32,35 +28,57 @@ def plot_sensor(path,sensor,data,x_l = 'X',y_l = 'Y',f = None):
 	diseases.remove('begintime')
 	diseases.remove('endtime')
 	diseases.remove('hydrocode')
-	labels = ['Negligible','Low','Moderate','High']
+	labels = ['None','Low','Moderate','High']
 	for dp in data:
     		st = (dp['begintime'] - epoch).total_seconds()
     		et = (dp['endtime'] - epoch).total_seconds()
 		xs.append(st);xs.append(et)
 		for j,d in enumerate(diseases):
-			y = dp[d] if not dp[d] == 'NULL' else -1.0
+			y = dp[d] if not dp[d] in ('NULL','No-Read') else -1.0
 			if type(y) == type(''):y = labels.index(y)
 			yss[j].append(y);yss[j].append(y)
-	x = numpy.array(xs)
-	ys = numpy.array(yss)
-
-	ax2d = plot_axes_xy(f = f,x = (x.min(),x.max()),y = (-1,3))
-	for y,d in zip(ys,diseases):
-		line = matplotlib.lines.Line2D(x,y,label = d)
-		ax2d.add_line(line)
-	ax2d.legend()
-		
-	ax2d.set_title('%s Disease Risks' % sensor)
-	ax2d.set_xlabel(x_l)
-	ax2d.set_ylabel(y_l)
-
-	#print('xbounds',(X.min(),X.max()))
-	#print('ybounds',(Y.min(),Y.max()))
-
-	#ax2d = plot_axes_xy(x = 5,o = (0,0),f = f,aspect = None)
-
+	x = numpy.array(xs)/24.0*60.0*60.0;ys = numpy.array(yss)
+	x -= x.min()
+	diseasecount = ys.shape[0]//2
+	#my = (ys[1::2,:].min()-0.1,ys[1::2,:].max()+0.1)
+	my = (-1.1,1.1)
+	if f is None:f = plt.figure(figsize = (8,8))
+	ax2dl = plot_axes_xy(f = f,x = (x.min(),x.max()),y = my,loc = '211')
+	ax2dr = plot_axes_xy(f = f,x = (x.min(),x.max()),y = (-1.1,3.1),loc = '212')
+	colors = [matplotlib.cm.jet(k) for k in numpy.linspace(0,1,diseasecount)]
+	colors = [a for b in zip(colors,colors) for a in b]
+	for y,d,c in zip(ys,diseases,colors):
+		line = matplotlib.lines.Line2D(x,y,color = c,lw = 1)
+		if d.endswith('index'):
+			line.set_label(d[:d.rfind('_index')])
+			ax2dl.add_line(line)
+		elif d.endswith('risk'):
+			line.set_label(d[:d.rfind('_risk')])
+			ax2dr.add_line(line)
+		else:raise ValueError
+	mx = [x.min(),x.max()]
+	ax2dl.plot(mx,[0,0],ls = '--',lw = 1,color = 'black')
+	ax2dl.plot(mx,[0.01,0.01],ls = '--',lw = 1,color = 'black')
+	ax2dl.plot(mx,[0.5,0.5],ls = '--',lw = 1,color = 'black')
+	ax2dl.plot(mx,[1,1],ls = '--',lw = 1,color = 'black')
+	ax2dr.plot(mx,[-1,-1],ls = '--',lw = 1,color = 'black')
+	ax2dr.plot(mx,[ 0, 0],ls = '--',lw = 1,color = 'brown')
+	ax2dr.plot(mx,[ 1, 1],ls = '--',lw = 1,color = 'blue')
+	ax2dr.plot(mx,[ 2, 2],ls = '--',lw = 1,color = 'green')
+	ax2dr.plot(mx,[ 3, 3],ls = '--',lw = 1,color = 'red')
+	ax2dr.yaxis.set_label_position('right')
+	#ax2dr.yaxis.tick_right()
+	ax2dr.set_yticks([-1,0,1,2,3])
+	ax2dr.set_yticklabels(['No-Read']+labels)
+	ax2dl.legend();ax2dr.legend()
+	ax2dl.set_title('%s Disease Indices' % sensor)
+	ax2dr.set_title('%s Disease Risks' % sensor)
+	ax2dl.set_xlabel(x_l);ax2dr.set_xlabel(x_l)
+	ax2dl.set_ylabel('Index');ax2dr.set_ylabel('Risk')
 	fn = os.path.join(path,'%s.png' % sensor)
-	f.savefig(fn,dpi = 100)
+        f.subplots_adjust(wspace = 0.2,hspace = 0.3)
+        f.subplots_adjust(left = 0.02,right = 0.98,top = 0.98,bottom = 0.2)
+	f.savefig(fn,dpi = 100,bbox_inches = 'tight')
 
 
 def plot_measured(datapoints):
@@ -84,7 +102,6 @@ def plot_model(path,model,x,y,zf,x_l = 'X',y_l = 'Y',z_l = 'Z',f = None):
 	X,Y = numpy.meshgrid(x,y)
 	z = numpy.array([zf(x,y) for x,y in zip(numpy.ravel(X),numpy.ravel(Y))])
 	Z = z.reshape(X.shape)
-
 	if f is None:f = plt.figure()
 	ax3d = plot_axes(f = f,
 		x = (X.min(),X.max()),
@@ -94,11 +111,9 @@ def plot_model(path,model,x,y,zf,x_l = 'X',y_l = 'Y',z_l = 'Z',f = None):
 	ax3d.set_xlabel(x_l)
 	ax3d.set_ylabel(y_l)
 	ax3d.set_zlabel(z_l)
-
-	print('xbounds',(X.min(),X.max()))
-	print('ybounds',(Y.min(),Y.max()))
-	print('zbounds',(Z.min(),Z.max()))
-
+	#print('xbounds',(X.min(),X.max()))
+	#print('ybounds',(Y.min(),Y.max()))
+	#print('zbounds',(Z.min(),Z.max()))
 	for a in xrange(0,360,15):
 		ax3d.view_init(elev = 20,azim = a)
 		fn = os.path.join(path,'%s_%d.png' % (model,a))
