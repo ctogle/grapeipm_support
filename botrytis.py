@@ -1,10 +1,12 @@
 #!/usr/bin/python2.7
+#import fungal_risk_model
 import weatherevent
 import pdb,math
 
 
 
 class botrytis(object):
+#class botrytis(fungal_risk_model.model):
 	'''"Development of an Infection Model for Botrytis Bunch Rot of Grapes 
 		Based on Wetness Duration and Temperature"
 	
@@ -36,7 +38,6 @@ class botrytis(object):
 		0.5 <= y < 1.0 	-> Moderate Risk
 		1.0 <= y 	-> High Risk
 		'''
-		#if y == 'NULL':return 'NULL'
 		if y == 'NULL':return 'No-Read'
 		x = 0
 		while x < len(botrytis.thresholds):
@@ -76,7 +77,7 @@ class botrytis(object):
 		return y,r
 
 	@staticmethod
-	def model(datapoints,cfg):
+	def model(datapoints):
 		'''return a piecewise calculation of botrytis risk
 		xs: will contain datetime objects where risk value changes
 		ys: will contain disease indices versus xs 

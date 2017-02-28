@@ -1,8 +1,8 @@
 #!/usr/bin/python2.7
-import fungal_risk_model
+import run_fungal_risk_models
 import convert
 
-import pdb,os,argparse,numpy,datetime
+import pdb,os,argparse,numpy,datetime,collections
 import matplotlib
 matplotlib.use('Agg')
 from mpl_toolkits.mplot3d import Axes3D
@@ -19,7 +19,7 @@ def plot_axes_xy(x = (-5,5),y = (-5,5),f = None,loc = '111',aspect = 'auto'):
 
 
 def plot_sensor(path,sensor,data,x_l = 'Time (Days)',y_l = 'Y',f = None):
-	timestamp_format = fungal_risk_model.timestamp_format
+	timestamp_format = run_fungal_risk_models.timestamp_format
 	epoch = datetime.datetime.utcfromtimestamp(0)
 	begintime = data[0]['begintime'].strftime(timestamp_format)
 	endtime = data[-1]['endtime'].strftime(timestamp_format)
@@ -43,6 +43,7 @@ def plot_sensor(path,sensor,data,x_l = 'Time (Days)',y_l = 'Y',f = None):
 	#my = (ys[1::2,:].min()-0.1,ys[1::2,:].max()+0.1)
 	my = (-1.1,1.1)
 	if f is None:f = plt.figure(figsize = (8,8))
+	else:f.clear()
 	ax2dl = plot_axes_xy(f = f,x = (x.min(),x.max()),y = my,loc = '211')
 	ax2dr = plot_axes_xy(f = f,x = (x.min(),x.max()),y = (-1.1,3.1),loc = '212')
 	colors = [matplotlib.cm.jet(k) for k in numpy.linspace(0,1,diseasecount)]
@@ -81,11 +82,11 @@ def plot_sensor(path,sensor,data,x_l = 'Time (Days)',y_l = 'Y',f = None):
 	f.savefig(fn,dpi = 100,bbox_inches = 'tight')
 
 
-def plot_measured(datapoints):
+def plot_measured(datapoints,f = None):
 	pngpath = os.path.join(os.getcwd(),'measured_model_values')
 	if not os.path.exists(pngpath):os.mkdir(pngpath)
 	for hydrocode in datapoints:
-		plot_sensor(pngpath,hydrocode,datapoints[hydrocode])
+		plot_sensor(pngpath,hydrocode,datapoints[hydrocode],f = f)
 
 
 def plot_axes(f = None,x = (-5,5),y = (-5,5),z = (-5,5)):
@@ -103,6 +104,7 @@ def plot_model(path,model,x,y,zf,x_l = 'X',y_l = 'Y',z_l = 'Z',f = None):
 	z = numpy.array([zf(x,y) for x,y in zip(numpy.ravel(X),numpy.ravel(Y))])
 	Z = z.reshape(X.shape)
 	if f is None:f = plt.figure()
+	else:f.clear()
 	ax3d = plot_axes(f = f,
 		x = (X.min(),X.max()),
 		y = (Y.min(),Y.max()),
@@ -120,21 +122,21 @@ def plot_model(path,model,x,y,zf,x_l = 'X',y_l = 'Y',z_l = 'Z',f = None):
 		f.savefig(fn,dpi = 100)
 
 
-def plot_theoreticals():
-	models = fungal_risk_model.models
+def plot_theoreticals(f = None):
+	models = run_fungal_risk_models.models
 
 	wd = numpy.linspace(4,20,17)
 	t = numpy.linspace(12,30,19)
 	wd_l = 'Wetness Duration (hrs)'
 	t_l = 'Temperature (C)'
-	z_l = 'Botrytis Disease Index'
 
 	pngpath = os.path.join(os.getcwd(),'theoretical_model_values')
 	if not os.path.exists(pngpath):os.mkdir(pngpath)
 
 	for disease,model in models.items():
-		mf = models['botrytis'].diseaseindex
-		plot_model(pngpath,disease,wd,t,mf,wd_l,t_l,z_l)
+		z_l = '%s Disease Index' % disease.title()
+		mf = models[disease].diseaseindex
+		plot_model(pngpath,disease,wd,t,mf,wd_l,t_l,z_l,f = f)
 
 
 if __name__ == '__main__':
@@ -159,13 +161,16 @@ if __name__ == '__main__':
 
 	cfg,hcfg = convert.parse_config(args.configfile)
 
-	plot_theoreticals()
+	f = plt.figure(figsize = (8,8))
+	plot_theoreticals(f = f)
 
-	datapoints = {}
+	datapoints = collections.OrderedDict()
 	ifiles = args.inputfiles.split(',')
-	for ifile in ifiles:fungal_risk_model.load_data(ifile,datapoints,hcfg,args)
+	for ifile in ifiles:
+		run_fungal_risk_models.load_data(ifile,datapoints,hcfg,args)
 
-	plot_measured(datapoints)
+	f = plt.figure(figsize = (8,8))
+	plot_measured(datapoints,f = f)
 
 
 

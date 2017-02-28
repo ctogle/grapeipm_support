@@ -1,140 +1,67 @@
 #!/usr/bin/python2.7
-import pdb,os,re,csv,argparse,math,datetime,collections
-import botrytis
-import convert
+import weatherevent
+import pdb,math
 
 
-timestamp_format = '%Y-%m-%d %H:%M:%S'
-alpha = re.compile(r"^[+-]?\d*[.,]?\d*$")
-models = {
-	'botrytis':botrytis.botrytis(),
-		}
 
+class model(object):
 
-# return a function that returns False for irrelevant data
-# or returns a transformed datapoint ready for futher computation otherwise
-def define_relevant(ot,ct,hcs,headers,hcfg):
-	if hcs:hc_relev = lambda hc : hc in hcs
-	else:hc_relev = lambda hc : True
-	ot_relev = lambda dpot : dpot >= ot 
-	ct_relev = lambda dpct : dpct <= ct 
-	def relevant(dp):
-		dphydrocode = dp[-1]
-		if not hc_relev(dphydrocode):return False
-		dptimestamp = dp[0]
-		dpotime = datetime.datetime.strptime(dptimestamp,timestamp_format)
-		if not ot_relev(dpotime):return False
-		#dpinterval = float(dp[-2])
-		dpinterval = float(hcfg[dphydrocode][0])
-		dpctime = dpotime + datetime.timedelta(minutes = dpinterval)
-		if not ct_relev(dpctime):return False
-		newdp = {}
-		for j,h in enumerate(headers):
-			if h == 'begintime':
-				newdp[h] = dpotime
-				newdp['endtime'] = dpctime
-			elif h == 'records':newdp[h] = int(dp[j]) 
-			elif alpha.match(dp[j]):newdp[h] = float(dp[j])
-			elif dp[j] in ('NAN','NULL'):newdp[h] = 'NULL'
-			else:newdp[h] = dp[j]
-		return newdp 
-	return relevant
+	labels = ['None']
+	thresholds = []
+	assert len(labels) == len(thresholds)+1
+	parameters = tuple()
+	precision = 5
 
+	@classmethod
+	def classifyindex(cls,y):
+		'''Classify the risk associated with the disease index'''
+		if y == 'NULL':return 'No-Read'
+		x = 0
+		while x < len(cls.thresholds):
+			if y < cls.thresholds[x]:break
+			else:x += 1
+		return cls.labels[x]
 
-# extract a set of sets of relevant data points
-# return a dict of relevant, transformed datapoints organized per sensor
-def load_data(ifile,datapoints,hcfg,args):
-	if args.hydrocodes:hydrocodes = args.hydrocodes.split(',')
-	else:hydrocodes = None
-	opentimestamp = args.startdate
-	opentime = datetime.datetime.strptime(opentimestamp,timestamp_format)
-	closetimestamp = args.enddate
-	closetime = datetime.datetime.strptime(closetimestamp,timestamp_format)
-	with open(ifile,'r') as ifh:
-		reader = csv.reader(ifh)
-		headers = next(reader)
-		relevant = define_relevant(opentime,closetime,hydrocodes,headers,hcfg)
-		for datapoint in reader:
-			newdp = relevant(datapoint)
-			if not newdp:continue
-			newdphc = newdp['hydrocode']
-			if newdphc in datapoints:datapoints[newdphc].append(newdp)
-			else:datapoints[newdphc] = [newdp]
+	@classmethod
+	def diseaseindex(cls,WD,T):
+		'''Return the disease index given a wetness duration and temperature
+		NOTE: This method should be overloaded in subclasses'''
+		return 0.0
 
+	@classmethod
+	def eventrisk(cls,event):
+		'''Compute the disease index,classification from event'''
+		WD = event.wet_time()
+		T = event.temperature()
+		if WD is None or T is None:
+			y,r = 'NULL','No-Read'
+		else:
+			y = cls.diseaseindex(WD,T)
+			r = cls.classifyindex(y)
+		return y,r
 
-# output the calculated risk data for relevant data
-def save_data(ofile,models,risks,hcfg,args):
-	opentimestamp = args.startdate
-	opentime = datetime.datetime.strptime(opentimestamp,timestamp_format)
-	closetimestamp = args.enddate
-	closetime = datetime.datetime.strptime(closetimestamp,timestamp_format)
-	outheader = not os.path.exists(ofile) or args.overwrite
-	with open(ofile,'w' if args.overwrite else 'a') as ofh:
-		writer = csv.writer(ofh,delimiter = args.delimiter)
-		if outheader:
-			headers = ['begintime']
-			for disease in models:
-				headers.append(disease+'_index')	
-				headers.append(disease+'_risk')	
-			headers.append('hydrocode')
-			writer.writerow(headers)
-		for hydrocode in risks:
-			interval = float(hcfg[hydrocode][0])
-			orow = [opentime.strftime(timestamp_format)]
-			dptime = opentime + datetime.timedelta(minutes = 0)
-			while dptime < closetime:
-				for disease in models:
-					dts,dis,drs = risks[hydrocode][disease]
-					if dptime in dts: 
-						dj = dts.index(dptime)
-						orow.append(dis[dj])
-						orow.append(drs[dj])
-					else:
-						orow.append('NULL')
-						orow.append('No-Read')
-				orow.append(hydrocode)
-				writer.writerow(orow)
-				dptime += datetime.timedelta(minutes = interval)
-				orow = [dptime.strftime(timestamp_format)]
-			print('constructed risk output for hydrocode \'%s\'' % hydrocode)
+	@classmethod
+	def model(cls,datapoints):
+		'''return a piecewise calculation of disease risk
+		xs: will contain datetime objects where risk value changes
+		ys: will contain disease indices versus xs 
+		cs: will contain index classifications of ys 
 
+		First create wet events as prescribed.
+		'''
+		events = weatherevent.serialize(datapoints)
+		xs,ys,cs = [],[],[]
+		for e in events:
+			fdp,ldp = e.datapoints[0],e.datapoints[-1]
+			if e.variety == 'wet':
+				y,r = cls.eventrisk(e)
+			elif e.variety == 'dry':
+				y,r = cls.eventrisk(e)
+			else:y,r = 'NULL','No-Read'
+			xs.extend([dp['begintime'] for dp in e.datapoints])
+			ys.extend([y for j in range(len(e.datapoints))])
+			cs.extend([r for j in range(len(e.datapoints))])
+		return xs,ys,cs
 
-if __name__ == '__main__':
-	parser = argparse.ArgumentParser(formatter_class = argparse.RawTextHelpFormatter)
-	parser.add_argument('configfile',
-		help = 'specify a parsing configuration file')
-	parser.add_argument('-i','--inputfiles',
-		help = 'optionally specify an input data file')
-	parser.add_argument('-o','--outputfile',
-		help = 'optionally specify an output data file')
-	parser.add_argument('-s','--startdate',default = '2010-01-01 00:00:00',
-		help = 'specify a starting time stamp for relevant new data points')
-	parser.add_argument('-e','--enddate',default = '2020-01-01 00:00:00',
-		help = 'specify an ending time stamp for relevant new data points')
-	parser.add_argument('-c','--hydrocodes',
-		help = 'specify a hydrocode for all new data points being processed')
-	parser.add_argument('-d','--delimiter',default = ',',
-		help = 'specify a delimiter for outputting data points\nNote: use $\'\\t\' for tab character')
-	parser.add_argument('-w','--overwrite',action = 'store_true',
-		help = 'discard existing data if output file already exists')
-	args = parser.parse_args()
-
-	if not args.inputfiles:print('no input files provided!');quit()
-	elif not args.outputfile:print('no output file provided!');quit()
-	cfg,hcfg = convert.parse_config(args.configfile)
-
-	datapoints = collections.OrderedDict()
-	ifiles = args.inputfiles.split(',')
-	for ifile in ifiles:load_data(ifile,datapoints,hcfg,args)
-
-	risks = {}
-	for hydrocode in datapoints:
-		scfg = hcfg[hydrocode]
-		risks[hydrocode] = {}
-		for threat,model in models.items():
-			frisk = model.model(datapoints[hydrocode],scfg)
-			risks[hydrocode][threat] = frisk 
-
-	save_data(args.outputfile,models,risks,hcfg,args)
 
 
