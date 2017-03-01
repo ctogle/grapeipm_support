@@ -3,8 +3,15 @@ import weatherevent
 import pdb,math
 
 
-
 class model(object):
+	'''"model" is the base class for a fungal risk model.
+	It must contain a list of risk classifications ("labels"), a list of 
+	threshold values of risk index ("thresholds") with one fewer elements
+	than the list of risk classifications.
+	The tuple "parameters" is passed to the method "diseaseindex".
+	The disease risk index is rounded to the integer "precision" digits before
+	risk classification is performed (via the method "classifyindex").
+	'''
 
 	labels = ['None']
 	thresholds = []
@@ -12,21 +19,22 @@ class model(object):
 	parameters = tuple()
 	precision = 5
 
+	@staticmethod
+	def diseaseindex(parameters,WD,T):
+		'''Return the disease index given a wetness duration and temperature
+		NOTE: This method should be overloaded in subclasses'''
+		return 0.0
+
 	@classmethod
 	def classifyindex(cls,y):
 		'''Classify the risk associated with the disease index'''
 		if y == 'NULL':return 'No-Read'
+		else:y = round(y,cls.precision)
 		x = 0
 		while x < len(cls.thresholds):
 			if y < cls.thresholds[x]:break
 			else:x += 1
 		return cls.labels[x]
-
-	@classmethod
-	def diseaseindex(cls,WD,T):
-		'''Return the disease index given a wetness duration and temperature
-		NOTE: This method should be overloaded in subclasses'''
-		return 0.0
 
 	@classmethod
 	def eventrisk(cls,event):
@@ -36,7 +44,7 @@ class model(object):
 		if WD is None or T is None:
 			y,r = 'NULL','No-Read'
 		else:
-			y = cls.diseaseindex(WD,T)
+			y = cls.diseaseindex(cls.parameters,WD,T)
 			r = cls.classifyindex(y)
 		return y,r
 
@@ -62,6 +70,5 @@ class model(object):
 			ys.extend([y for j in range(len(e.datapoints))])
 			cs.extend([r for j in range(len(e.datapoints))])
 		return xs,ys,cs
-
 
 

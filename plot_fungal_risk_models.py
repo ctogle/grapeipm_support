@@ -50,11 +50,11 @@ def plot_sensor(path,sensor,data,x_l = 'Time (Days)',y_l = 'Y',f = None):
 	colors = [a for b in zip(colors,colors) for a in b]
 	for y,d,c in zip(ys,diseases,colors):
 		line = matplotlib.lines.Line2D(x,y,color = c,lw = 1)
-		if d.endswith('index'):
-			line.set_label(d[:d.rfind('_index')])
+		if d.endswith('Index'):
+			line.set_label(d[:d.rfind(' Index')])
 			ax2dl.add_line(line)
-		elif d.endswith('risk'):
-			line.set_label(d[:d.rfind('_risk')])
+		elif d.endswith('Risk'):
+			line.set_label(d[:d.rfind(' Risk')])
 			ax2dr.add_line(line)
 		else:raise ValueError
 	mx = [x.min(),x.max()]
@@ -99,9 +99,9 @@ def plot_axes(f = None,x = (-5,5),y = (-5,5),z = (-5,5)):
 	return ax
 
 
-def plot_model(path,model,x,y,zf,x_l = 'X',y_l = 'Y',z_l = 'Z',f = None):
+def plot_model(path,model,x,y,p,zf,x_l = 'X',y_l = 'Y',z_l = 'Z',f = None):
 	X,Y = numpy.meshgrid(x,y)
-	z = numpy.array([zf(x,y) for x,y in zip(numpy.ravel(X),numpy.ravel(Y))])
+	z = numpy.array([zf(p,x,y) for x,y in zip(numpy.ravel(X),numpy.ravel(Y))])
 	Z = z.reshape(X.shape)
 	if f is None:f = plt.figure()
 	else:f.clear()
@@ -118,7 +118,8 @@ def plot_model(path,model,x,y,zf,x_l = 'X',y_l = 'Y',z_l = 'Z',f = None):
 	#print('zbounds',(Z.min(),Z.max()))
 	for a in xrange(0,360,15):
 		ax3d.view_init(elev = 20,azim = a)
-		fn = os.path.join(path,'%s_%d.png' % (model,a))
+		fn = '%s_%d.png' % (model.replace(' ','_').lower(),a)
+		fn = os.path.join(path,fn)
 		f.savefig(fn,dpi = 100)
 
 
@@ -136,7 +137,8 @@ def plot_theoreticals(f = None):
 	for disease,model in models.items():
 		z_l = '%s Disease Index' % disease.title()
 		mf = models[disease].diseaseindex
-		plot_model(pngpath,disease,wd,t,mf,wd_l,t_l,z_l,f = f)
+		p = models[disease].parameters
+		plot_model(pngpath,disease,wd,t,p,mf,wd_l,t_l,z_l,f = f)
 
 
 if __name__ == '__main__':
@@ -171,6 +173,5 @@ if __name__ == '__main__':
 
 	f = plt.figure(figsize = (8,8))
 	plot_measured(datapoints,f = f)
-
 
 

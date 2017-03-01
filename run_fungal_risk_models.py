@@ -1,15 +1,16 @@
 #!/usr/bin/python2.7
 import pdb,os,re,csv,argparse,math,datetime,collections
-import botrytis,black_rot
-import convert
+import convert,models
 
 
-timestamp_format = '%Y-%m-%d %H:%M:%S'
-alpha = re.compile(r"^[+-]?\d*[.,]?\d*$")
-models = {
-	'botrytis':botrytis.botrytis(),
-	'black_rot':black_rot.black_rot(),
-		}
+generic_timestamp_format = '%Y-%m-%d %H:%M:%S'
+alpha = re.compile(r"^[+-]?\d*[.,]?\d*[e]?[-+]?\d*$")
+models = collections.OrderedDict([
+	('Botrytis',models.botrytis.botrytis()),
+	('Black Rot',models.black_rot.black_rot()),
+	('Powdery Mildew',models.powdery_mildew.powdery_mildew()),
+	('Phomopsis',models.phomopsis.phomopsis()),
+		])
 
 
 # return a function that returns False for irrelevant data
@@ -22,10 +23,10 @@ def define_relevant(ot,ct,hcs,headers,hcfg):
 	def relevant(dp):
 		dphydrocode = dp[-1]
 		if not hc_relev(dphydrocode):return False
+		timestamp_format = hcfg[dphydrocode][1]
 		dptimestamp = dp[0]
 		dpotime = datetime.datetime.strptime(dptimestamp,timestamp_format)
 		if not ot_relev(dpotime):return False
-		#dpinterval = float(dp[-2])
 		dpinterval = float(hcfg[dphydrocode][0])
 		dpctime = dpotime + datetime.timedelta(minutes = dpinterval)
 		if not ct_relev(dpctime):return False
@@ -48,9 +49,9 @@ def load_data(ifile,datapoints,hcfg,args):
 	if args.hydrocodes:hydrocodes = args.hydrocodes.split(',')
 	else:hydrocodes = None
 	opentimestamp = args.startdate
-	opentime = datetime.datetime.strptime(opentimestamp,timestamp_format)
+	opentime = datetime.datetime.strptime(opentimestamp,generic_timestamp_format)
 	closetimestamp = args.enddate
-	closetime = datetime.datetime.strptime(closetimestamp,timestamp_format)
+	closetime = datetime.datetime.strptime(closetimestamp,generic_timestamp_format)
 	with open(ifile,'r') as ifh:
 		reader = csv.reader(ifh)
 		headers = next(reader)
@@ -66,21 +67,22 @@ def load_data(ifile,datapoints,hcfg,args):
 # output the calculated risk data for relevant data
 def save_data(ofile,models,risks,hcfg,args):
 	opentimestamp = args.startdate
-	opentime = datetime.datetime.strptime(opentimestamp,timestamp_format)
+	opentime = datetime.datetime.strptime(opentimestamp,generic_timestamp_format)
 	closetimestamp = args.enddate
-	closetime = datetime.datetime.strptime(closetimestamp,timestamp_format)
+	closetime = datetime.datetime.strptime(closetimestamp,generic_timestamp_format)
 	outheader = not os.path.exists(ofile) or args.overwrite
 	with open(ofile,'w' if args.overwrite else 'a') as ofh:
 		writer = csv.writer(ofh,delimiter = args.delimiter)
 		if outheader:
 			headers = ['begintime']
 			for disease in models:
-				headers.append(disease+'_index')	
-				headers.append(disease+'_risk')	
+				headers.append(disease+' Index')	
+				headers.append(disease+' Risk')	
 			headers.append('hydrocode')
 			writer.writerow(headers)
 		for hydrocode in risks:
 			interval = float(hcfg[hydrocode][0])
+			timestamp_format = hcfg[hydrocode][1]
 			orow = [opentime.strftime(timestamp_format)]
 			dptime = opentime + datetime.timedelta(minutes = 0)
 			while dptime < closetime:
@@ -130,7 +132,6 @@ if __name__ == '__main__':
 
 	risks = {}
 	for hydrocode in datapoints:
-		#scfg = hcfg[hydrocode]
 		risks[hydrocode] = {}
 		for threat,model in models.items():
 			frisk = model.model(datapoints[hydrocode])
