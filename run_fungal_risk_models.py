@@ -20,14 +20,17 @@ def define_relevant(ot,ct,hcs,headers,hcfg):
     else:hc_relev = lambda hc : True
     ot_relev = lambda dpot : dpot >= ot 
     ct_relev = lambda dpct : dpct <= ct 
+    get_tsf = lambda hc : hcfg[hc][1] if hc in hcfg else generic_timestamp_format
+    get_int = lambda hc : float(hcfg[hc][0]) if hc in hcfg else 20.0
     def relevant(dp):
         dphydrocode = dp[-1]
         if not hc_relev(dphydrocode):return False
-        timestamp_format = hcfg[dphydrocode][1]
+        timestamp_format = get_tsf(dphydrocode)
         dptimestamp = dp[0]
         dpotime = datetime.datetime.strptime(dptimestamp,timestamp_format)
         if not ot_relev(dpotime):return False
-        dpinterval = float(hcfg[dphydrocode][0])
+        #dpinterval = float(hcfg[dphydrocode][0])
+        dpinterval = get_int(dphydrocode)
         dpctime = dpotime + datetime.timedelta(minutes = dpinterval)
         if not ct_relev(dpctime):return False
         newdp = collections.OrderedDict()
@@ -35,9 +38,9 @@ def define_relevant(ot,ct,hcs,headers,hcfg):
             if h == 'begintime':
                 newdp[h] = dpotime
                 newdp['endtime'] = dpctime
+            elif dp[j] in ('NAN','NULL'):newdp[h] = 'NULL'
             elif h == 'records':newdp[h] = int(dp[j]) 
             elif alpha.match(dp[j]):newdp[h] = float(dp[j])
-            elif dp[j] in ('NAN','NULL'):newdp[h] = 'NULL'
             else:newdp[h] = dp[j]
         return newdp 
     return relevant
@@ -81,8 +84,12 @@ def save_data(ofile,models,risks,hcfg,args):
             headers.append('hydrocode')
             writer.writerow(headers)
         for hydrocode in risks:
-            interval = float(hcfg[hydrocode][0])
-            timestamp_format = hcfg[hydrocode][1]
+            if hydrocode in hcfg:
+                interval = float(hcfg[hydrocode][0])
+                timestamp_format = hcfg[hydrocode][1]
+            else:
+                interval = 20.0
+                timestamp_format = generic_timestamp_format
             orow = [opentime.strftime(timestamp_format)]
             dptime = opentime + datetime.timedelta(minutes = 0)
             while dptime < closetime:

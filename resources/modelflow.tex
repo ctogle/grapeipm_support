@@ -36,18 +36,17 @@
 
 \pagestyle{empty}
 
+\begin{figure}[!h]
+  \centering
 \begin{tikzpicture}[scale=2,node distance=2.5cm,auto,>=latex']
-  \mnode{(0,0)}{\bw}{\bh}{Fungal Risk Model}{a}
-  \mnode[(-0.5,-0.5)]{(a)}{1.0}{\bh}{Risk Index}{b}
-  \mnode[(1,-0.5)]{(a)}{\bw}{\bh}{Risk Classification}{c}
-  \mnode[(0,-0.5)]{(c)}{\bw}{\bh}{Suggested Response}{d}
-  \mnode[(0,0.5)]{(a)}{\bw}{\bh}{Time Series Weather Data}{e}
+  \mnode{(0,1)}{1.75}{\bh}{Data Sources \& Date Ranges}{a}
+  \mnode[(0,-1)]{(a)}{\bw}{\bh}{Unified Data Format}{b}
+  \mnode[(0,-1)]{(b)}{\bw}{\bh}{Fungal Risk Models}{c}
+  \mnode[(0,-1)]{(c)}{\bw}{\bh}{Suggested Responses}{d}
 
   \medge{(a)}{(b)}{(0,-\bh/2)}{(0,\bh/2)}
-  \medge{(a)}{(c)}{(0,-\bh/2)}{(0,\bh/2)}
-  \medge{(b)}{(c)}{(0.5,0)}{(-\bw/2,0)}
+  \medge{(b)}{(c)}{(0,-\bh/2)}{(0,\bh/2)}
   \medge{(c)}{(d)}{(0,-\bh/2)}{(0,\bh/2)}
-  \medge{(e)}{(a)}{(0,-\bh/2)}{(0,\bh/2)}
 
   \iffalse
   \begin{scope}[on background layer]
@@ -55,13 +54,59 @@
   \end{scope}
   \fi
 \end{tikzpicture}
+\end{figure}
 
-\vspace{2cm}
+\clearpage
+\pagestyle{empty}
 
+\begin{figure}[!h]
+  \centering
+\begin{tikzpicture}[scale=2,node distance=2.5cm,auto,>=latex']
+  \draw [fill={rgb:red,5;blue,30;green,10},opacity=0.2,thick] (-3,-1.75) rectangle (3,1);
+  \draw [fill={rgb:red,25;blue,0;green,10},opacity=0.3,thick] (-3,-1.75) rectangle (0,-1.25);
+  \mtext{(-1.5,-1.5)}{12}{Unified Data Formatting}{n}
+
+  \mnode{(2,-1.5)}{\bw}{\bh}{Unified Data Format}{a}
+  \mnode[(0,1)]{(a)}{\bw}{\bh}{Data Conversion}{b}
+  \mnode[(-2,-0.5)]{(b)}{\bw}{\bh}{Configuration File}{c}
+  \mnode[(0,1)]{(b)}{\bw}{\bh}{Multiple Data Sources}{d}
+  \mnode[(-2,0)]{(d)}{1.75}{\bh}{Emulated Loggernet Format}{e}
+  \mnode[(-2,-0.5)]{(d)}{\bw}{\bh}{Loggernet Format}{f}
+  \mnode[(0,-1)]{(a)}{\bw}{\bh}{Time Series Weather Data}{g}
+  \mnode[(0,1.5)]{(d)}{\bw}{\bh}{Sources \& Date Range}{h}
+  \mnode[(-2,0)]{(e)}{\bw}{\bh}{Weather Underground}{i}
+  \mnode[(-2,-0.5)]{(f)}{\bw}{\bh}{Campbell Weather Sensor}{j}
+  \mnode[(0,-0.5)]{(i)}{\bw}{\bh}{Configuration File}{k}
+
+  \medge[Input]{(h)}{(d)}{(0,-\bh/2)}{(0,\bh/2)}
+  \medge[Output]{(a)}{(g)}{(0,-\bh/2)}{(0,\bh/2)}
+  \medge{(d)}{(b)}{(0,-\bh/2)}{(0,\bh/2)}
+  \medge{(b)}{(a)}{(0,-\bh/2)}{(0,\bh/2)}
+  \medge{(e)}{(d)}{(\bw/2,0)}{(-\bw/2,0)}
+  \medge{(f)}{(d)}{(\bw/2,0)}{(-\bw/2,0)}
+  \medge{(c)}{(b)}{(\bw/2,0)}{(-\bw/2,0)}
+  \medge{(i)}{(e)}{(\bw/2,0)}{(-0.875,0)}
+  \medge{(j)}{(f)}{(\bw/2,0)}{(-\bw/2,0)}
+  \medge{(k)}{(i)}{(0,\bh/2)}{(0,-\bh/2)}
+
+  \iffalse
+  \begin{scope}[on background layer]
+    \draw[help lines] (-3,-3) grid (3,3);
+  \end{scope}
+  \fi
+\end{tikzpicture}
+\end{figure}
+
+\clearpage
+\pagestyle{empty}
+
+\begin{figure}[!h]
+  \centering
 \begin{tikzpicture}[scale=2,node distance=2.5cm,auto,>=latex']
   \draw [fill={rgb:red,5;blue,30;green,10},opacity=0.2,thick] (-3,-1) rectangle (3,2);
   \draw [fill={rgb:red,25;blue,0;green,10},opacity=0.3,thick] (-3,-1) rectangle (0,-0.5);
-  \mtext{(-1.5,-0.75)}{12}{Fungal Risk Model}{n}
+  \mtext{(-1.5,-0.75)}{12}{Fungal Risk Modeling}{n}
+
   \mnode{(1,2.75)}{\bw}{\bh}{Time Series Weather Data}{a}
   \mnode[(0,-1.25)]{(a)}{\bw}{\bh}{Event Classification}{b}
   \mnode[(-2,0)]{(b)}{\bw}{\bh}{Event Classification Rule}{c}
@@ -71,8 +116,8 @@
   \mnode[(0,-0.5)]{(e)}{\bw}{\bh}{Risk Classification}{g}
   \mnode[(-2,0)]{(g)}{1.75}{\bh}{Classification Binning Rule}{h}
   \mnode[(-1,0.5)]{(f)}{\bw}{\bh}{Disease Measurements}{k}
-  \mnode[(1,-0.5)]{(g)}{\bw}{\bh}{Fungal Risk Output}{i}
-  \mnode[(0,-1.25)]{(i)}{\bw}{\bh}{Time Series Risk Data}{j}
+  \mnode[(1,-0.5)]{(g)}{\bw}{\bh}{Time Series Risk Data}{i}
+  \mnode[(0,-1.25)]{(i)}{\bw}{\bh}{Suggested Response}{j}
 
   \medge[Input]{(a)}{(b)}{(0,-\bh/2)}{(0,\bh/2)}
   \medge{(b)}{(d)}{(0,-\bh/2)}{(0,\bh/2)}
@@ -94,6 +139,7 @@
   \end{scope}
   \fi
 \end{tikzpicture}
+\end{figure}
 
 \end{document}
 

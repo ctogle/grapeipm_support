@@ -2,7 +2,6 @@
 import pdb
 
 
-
 class event(object):
     '''Events hold batches of weather data points considered contiguous 
     based on some auxiliary condition (applied during event creation).
@@ -16,6 +15,7 @@ class event(object):
 
     #rh_threshold = 0.95
     lw_threshold = 0.0
+    dryperiod_threshold = 4.0*60.0
 
     @staticmethod
     def mean(seq):return sum(seq)/len(seq)
@@ -75,13 +75,11 @@ def serialize(datapoints):
     dpiter = datapoints.__iter__()
     dp = next(dpiter)
     events = [event(dp,event.classify(dp))]
-    #interval = float(cfg[0])
-    interval = (dp['endtime']-dp['begintime']).total_seconds()/60.0
-    drythreshold = 4.0*60.0
     dryperiod = 0.0
     for dp in dpiter: 
         lastvariety = events[-1].variety
         nextvariety = event.classify(dp)
+        interval = (dp['endtime']-dp['begintime']).total_seconds()/60.0
         if nextvariety == 'dry':dryperiod += interval
         if lastvariety == nextvariety:
             #print('variety match %s' % lastvariety)
@@ -100,7 +98,7 @@ def serialize(datapoints):
                 dryperiod = 0.0
                 events.append(event(dp,variety))
             elif lastvariety == 'wet':
-                if dryperiod >= drythreshold:
+                if dryperiod >= event.dryperiod_threshold:
                     ne = event(dp,nextvariety)
                     events.append(ne)
                 else:events[-1].datapoints.append(dp)
@@ -108,6 +106,5 @@ def serialize(datapoints):
     else:
         print('event serialization failure')
         raise ValueError
-
 
 

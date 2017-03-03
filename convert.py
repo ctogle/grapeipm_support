@@ -1,5 +1,5 @@
 #!/usr/bin/python2.7
-import pdb,os,csv,argparse,datetime,collections
+import pdb,os,csv,argparse,glob,datetime,collections
 
 # make a lambda function corresponding to handling of a data column
 def make_translatevalue(j):
@@ -50,6 +50,9 @@ def translate(ifile,ofile,cfg,args):
             # iterate over sensor key mappings, outputting data to ofile for each sensor
             # the sensor mappings are specified by the config file
             for hydrocode,sensorcfg in sensors:
+                # allow input file to override hydrocode (supports weather underground
+                if '%s' in hydrocode:eff_hydrocode = hydrocode % formatting[0]
+                else:eff_hydrocode = hydrocode
                 # identify the time interval associated with the data source
                 time_interval = sensorcfg[0]
                 # extract the timestamp format associated with ifile from the config file
@@ -76,13 +79,14 @@ def translate(ifile,ofile,cfg,args):
                     # construct and record the output data point 'orow' based on the relevant sensor
                     orow = [tf(irow) for tf in tfkey]
                     orow.append(time_interval)
-                    orow.append(hydrocode)
+                    orow.append(eff_hydrocode)
                     writer.writerow(orow)
 
             # update the config file to reflect to newest processed data point
-            if itime < closetime:
-                cfg[station][hydrocode][2] = itime.strftime(cfg[station][hydrocode][1])
-            else:cfg[station][hydrocode][2] = closetime.strftime(cfg[station][hydrocode][1])
+            if eff_hydrocode == hydrocode:
+                if itime < closetime:
+                    cfg[station][hydrocode][2] = itime.strftime(cfg[station][hydrocode][1])
+                else:cfg[station][hydrocode][2] = closetime.strftime(cfg[station][hydrocode][1])
 
     # note the successful processing of ifile to ofile on stdout
     print('translated file \'%s\' to \'%s\'' % (ifile,ofile))
@@ -173,11 +177,13 @@ if __name__ == '__main__':
     # the -z option leads to iterating over second line of config file for input files
     if args.definputs:
         for ifile in cfg['OUTPUTINFO'][1]:
-            convert_file(ifile,ofile,cfg,args)
+            for dfile in glob.glob(ifile):
+                convert_file(dfile,ofile,cfg,args)
     # the -i option was used; ifile is comma seperated list of paths
     elif ifile:
         for ifi in ifile.split(','):    
-            convert_file(ifi,ofile,cfg,args)
+            for dfile in glob.glob(ifi):
+                convert_file(dfile,ofile,cfg,args)
     # if not using the -z or -i options, iterate over all config entries using their default files
     else:
         autofixhydrocode = not args.hydrocode
@@ -189,8 +195,9 @@ if __name__ == '__main__':
                     continue
                 defifiles = cfg[stationkey][sensorkey][5:]
                 for defifile in defifiles:
-                    if autofixhydrocode:args.hydrocode = sensorkey
-                    convert_file(defifile,ofile,cfg,args)
+                    for dfile in glob.glob(defifile):
+                        if autofixhydrocode:args.hydrocode = sensorkey
+                        convert_file(dfile,ofile,cfg,args)
 
     
 

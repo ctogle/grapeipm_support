@@ -3,10 +3,16 @@ some open ended issues:
 
   need to update README greatly to reflect updates to convert.py and the risk modeling pipeline
 
+  wu_gather:
+    need some approach for variable interval between datapoints
+      should linearly interpolate onto regular grid perhaps??
+
   models:
     no idea where the models for phomopsis, powdery mildew, and black rot came from
     should reread broom 1995 paper to confirm wet event classification method
     should likely disengage risk measurement for dry events, but should confirm
+    need secondary risk estimate scheme for when leaf wetness is unavailable
+    with wu data, cannot reliably infer interval... currently hack fixed at 20...
 
   plotting:
     plotting all diseases on the same figure makes them difficult to read
