@@ -1,5 +1,5 @@
 #!/usr/bin/python2.7
-import pdb,os,csv,json,time,numpy,argparse,datetime,collections
+import pdb,fnmatch,os,csv,json,time,numpy,argparse,datetime,collections
 from six.moves import urllib
 import convert
 
@@ -16,6 +16,7 @@ def urlfetch(origin,outpath):
     return False
 
 
+#def gather(cache,apikey,apidelay,state,city,startdate,enddate,lastcall):
 def gather(cache,apikey,apidelay,state,city,startdate,enddate,lastcall):
     '''Download weather underground data for a "state","city" pair covering 
     the dates from "startdate" to "enddate".
@@ -31,7 +32,8 @@ def gather(cache,apikey,apidelay,state,city,startdate,enddate,lastcall):
         if sleep < 0:
             currentdate = startdate+datetime.timedelta(nday)
             date = currentdate.strftime('%Y%m%d')
-            url = make_url(apikey,state,city,date)
+            if state == 'PWS':url = make_url_date_station(apikey,city,date)
+            else:url = make_url_date_state_city(apikey,state,city,date)
             outpath = make_outpath(cache,state,city,date)
             if urlfetch(url,outpath):lastcall = time.time()
             datafiles.append(outpath)
@@ -61,8 +63,12 @@ def convert(cfg,datafiles):
     diter = datafiles.__iter__()
     dfile = next(diter)
     with open(dfile) as f:data = json.load(f)
-    state = data['location']['state']
-    city = data['location']['city']
+    if fnmatch.fnmatch(dfile,'*PWS_*'):
+        state = 'PWS'
+        city = data['location']['nearby_weather_stations']['pws']['station'][0]['id']
+    else:
+        state = data['location']['state']
+        city = data['location']['city']
     loggernet_identifier = 'WeatherUnderground'
     hydrocode = '%s_%s_%s' % (loggernet_identifier,state,city)
     if not os.path.exists(cfg.output):os.mkdir(cfg.output)
@@ -101,9 +107,13 @@ def parse_config(cfg):
     return cfg
 
 
-baseurl = 'http://api.wunderground.com/api/%s/geolookup/history_%s/q/%s/%s.json'
+#         'https://www.wunderground.com/personal-weather-station/dashboard?ID=KVAWINCH48#history'
+#baseurl_data_station = 'https://api.wunderground.com/api/%s/geolookup/history_%s/q/pws:KVAWINCH48.json'
+baseurl_data_station = 'https://api.wunderground.com/api/%s/geolookup/history_%s/q/pws:%s.json'
+baseurl_date_state_city = 'http://api.wunderground.com/api/%s/geolookup/history_%s/q/%s/%s.json'
 make_outpath = lambda p,s,c,d : os.path.join(p,s+'_'+c+'_'+d+'.json')
-make_url = lambda u,s,c,d : baseurl % (u,d,s,c)
+make_url_date_state_city = lambda u,s,c,d : baseurl_date_state_city % (u,d,s,c)
+make_url_date_station = lambda u,s,d : baseurl_data_station % (u,d,s)
 
 
 if __name__ == '__main__':
