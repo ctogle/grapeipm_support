@@ -109,24 +109,15 @@ def parse_config(cfg):
 
 baseurl_data_station = 'https://api.wunderground.com/api/%s/geolookup/history_%s/q/pws:%s.json'
 baseurl_date_state_city = 'http://api.wunderground.com/api/%s/geolookup/history_%s/q/%s/%s.json'
-baseurl_lonlat = 'http://api.wunderground.com/api/%s/geolookup/q/%f,%f.json'
 make_outpath = lambda p,s,c,d : os.path.join(p,s+'_'+c+'_'+d+'.json')
 make_url_date_state_city = lambda u,s,c,d : baseurl_date_state_city % (u,d,s,c)
 make_url_date_station = lambda u,s,d : baseurl_data_station % (u,d,s)
-make_url_lonlat = lambda u,x,y : baseurl_lonlat % (u,x,y)
-
-
-def lonlat(cache,apikey,lon,lat):
-    if not os.path.exists(cache):os.mkdir(cache)
-    outpath = make_outpath(cache,str(lon),str(lat),'X')
-    url = make_url_lonlat(apikey,lon,lat)
-    if urlfetch(url,outpath):lastcall = time.time()
-    with open(outpath) as f:data = json.load(f)
-
-    pdb.set_trace()
 
 
 if __name__ == '__main__':
+    '''
+    To use glob for -i option, escape * character (e.g. ./wu_output/"*" ).
+    '''
     parser = argparse.ArgumentParser(formatter_class = argparse.RawTextHelpFormatter)
     parser.add_argument('configfile',
         help = 'specify a parsing configuration file')
@@ -143,8 +134,6 @@ if __name__ == '__main__':
     parser.add_argument('-e','--enddate',
         help = 'specify an ending time stamp for relevant new data points')
     cfg = parse_config(parser.parse_args())
-
-    lonlat(cfg.cache,cfg.apikey,37.776289,-122.395234)
 
     ts_format = '%Y-%m-%d %H:%M:%S'
     startdate = datetime.datetime.strptime(cfg.startdate,ts_format)
