@@ -6,6 +6,9 @@ import wu_gather
 
 baseurl_lonlat = 'http://api.wunderground.com/api/%s/geolookup/q/%s,%s.json'
 make_url_lonlat = lambda u,x,y : baseurl_lonlat % (u,x,y)
+# added this function cause it looks like Wunderground defies convention and has lat first
+# Converts params given as x,y to y,x
+make_url_latlon = lambda u,x,y : baseurl_lonlat % (u,x,y)
 
 baseurl_state = 'http://api.wunderground.com/api/%s/geolookup/q/%s.json'
 make_url_state = lambda u,s : baseurl_state % (u,s)
@@ -14,6 +17,7 @@ locstring = lambda slocs : '|'.join([k+':'+','.join(slocs[k]) for k in slocs])
 
 
 def plot_stationpoints(pts,lon,lat,bndf = 10.0):
+    print('Calling fn plot_stationpoints()')
     '''Useful function for plotting the locations of stations around a lon,lat point.'''
     print('... found %d nearby stations to lon,lat %s,%s ...' % (len(pts),lon,lat))
     xs,ys = zip(*pts)
@@ -29,6 +33,7 @@ def plot_stationpoints(pts,lon,lat,bndf = 10.0):
 
 @contextlib.contextmanager
 def nostdout():
+    print('Calling fn nostdout()')
     '''Context manager that supresses stdout.'''
     save_stdout = sys.stdout
     sys.stdout = io.BytesIO()
@@ -37,6 +42,7 @@ def nostdout():
 
 
 def query(url,outpath):
+    print('Calling fn query(%s, %s)' % (url, outpath))
     '''Download json file from url, save at output, and return associated data.'''
     if wu_gather.urlfetch(url,outpath):lastcall = time.time()
     with open(outpath) as f:data = json.load(f)
@@ -44,11 +50,12 @@ def query(url,outpath):
 
 
 def lonlat(cache,apikey,lon,lat):
+    print('Calling fn lonlat()')
     '''Fetch list of up to 50 station locations within 40 km of a longitude,latitude.
     "The nearby Personal Weather Stations returned in the feed represent the closest 
     stations within a 40km radius, with a max number of stations returned of 50."'''
     outpath = wu_gather.make_outpath(cache,'LonLat_'+str(lon),str(lat),'X')
-    url = make_url_lonlat(apikey,lon,lat)
+    url = make_url_latlon(apikey,lat,lon)
     data = query(url,outpath)
     pts = []
     stationlocs = {}
@@ -72,11 +79,14 @@ def lonlat(cache,apikey,lon,lat):
 
 
 def state(cache,apikey,state):
+    print('Calling fn state()')
     '''Fetch state wide list of station locations (one per city).'''
     outpath = wu_gather.make_outpath(cache,state,'X','X')
     url = make_url_state(apikey,state)
+    print('... Searching %s with key %s, final URL: %s' % (state,apikey,url))
     data = query(url,outpath)
     stationlocs = {}
+    print(data)
     for r in data['response']['results']:
         state,city = r['state'],r['city']
         if state in stationlocs:stationlocs[state].append(city)
@@ -111,10 +121,10 @@ if __name__ == '__main__':
     if not os.path.exists(cfg.cache):os.mkdir(cfg.cache)
 
     if cfg.state:
-        with nostdout():
+        #with nostdout():
             stationlocs = state(cfg.cache,cfg.apikey,cfg.state)
     elif cfg.longitude and cfg.latitude:
-        with nostdout():
+        #with nostdout():
             stationlocs = lonlat(cfg.cache,cfg.apikey,cfg.longitude,cfg.latitude)
     else:
         emsg = '... need either --state option or --longitude and --latitude options ...'
